@@ -701,7 +701,8 @@ struct ContentView: View {
                                       ndb: ndb,
                                       quote_reposts: .init(our_pubkey: pubkey),
                                       emoji_provider: DefaultEmojiProvider(showAllVariations: true),
-                                      favicon_cache: FaviconCache()
+                                      favicon_cache: FaviconCache(),
+                                      favorites: FavoritesManager.shared
         )
         
         home.damus_state = self.damus_state!
