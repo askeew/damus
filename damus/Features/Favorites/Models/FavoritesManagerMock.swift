@@ -5,7 +5,7 @@ class FavoritesManagerMock: FavoritesManagerProtocol  {
     private var favorites: Set<Pubkey> = []
     
     func isFavorite(_ pubkey: Pubkey) -> Bool {
-        return favorites.contains(pubkey)
+       favorites.contains(pubkey)
     }
     
     func toggleFavorite(_ pubkey: Pubkey) {
