@@ -197,7 +197,7 @@ class HomeModel: ContactsDelegate {
         case .metadata:
             // profile metadata processing is handled by nostrdb
             break
-        case .list_deprecated:
+        case .follow_list:
             handle_old_list_event(ev)
         case .mute_list:
             handle_mute_list_event(ev)
@@ -227,7 +227,7 @@ class HomeModel: ContactsDelegate {
             break
         case .relay_list:
             break   // This will be handled by `UserRelayListManager`
-        case .follow_list:
+        case .starter_list:
             break
         case .interest_list:
             break   // Don't care for now
@@ -556,7 +556,7 @@ class HomeModel: ContactsDelegate {
         var our_contacts_filter = NostrFilter(kinds: [.contacts, .metadata])
         our_contacts_filter.authors = [damus_state.pubkey]
         
-        var our_old_blocklist_filter = NostrFilter(kinds: [.list_deprecated])
+        var our_old_blocklist_filter = NostrFilter(kinds: [.follow_list])
         our_old_blocklist_filter.parameter = ["mute"]
         our_old_blocklist_filter.authors = [damus_state.pubkey]
 
