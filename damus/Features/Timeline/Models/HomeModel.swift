@@ -199,6 +199,7 @@ class HomeModel: ContactsDelegate {
             break
         case .follow_list:
             handle_old_list_event(ev)
+            damus_state.favorites.handleEvent(ev, pubkey: damus_state.pubkey)
         case .mute_list:
             handle_mute_list_event(ev)
         case .boost:
