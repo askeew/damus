@@ -28,4 +28,20 @@ class FavoritesManagerMock: Favorites  {
         favorites = new_favorites
         event = ev
     }
+
+    private func handle_favorite_action(state: DamusState, target: Pubkey, is_favorite: Bool) {
+        if is_favorite {
+            favorites.insert(target)
+        } else {
+            favorites.remove(target)
+        }
+    }
+
+    func handle_favorite(state: DamusState, target: Pubkey) {
+        handle_favorite_action(state: state, target: target, is_favorite: true)
+    }
+
+    func handle_unfavorite(state: DamusState, target: Pubkey) {
+        handle_favorite_action(state: state, target: target, is_favorite: false)
+    }
 }

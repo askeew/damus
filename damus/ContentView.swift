@@ -422,6 +422,12 @@ struct ContentView: View {
         .onReceive(handle_notify(.followed)) { _ in
             home.resubscribe(.following)
         }
+        .onReceive(handle_notify(.favorite)) { pubkey in
+            damus_state.favorites.handle_favorite(state: damus_state, target: pubkey)
+        }
+        .onReceive(handle_notify(.unfavorite)) { pubkey in
+            damus_state.favorites.handle_unfavorite(state: damus_state, target: pubkey)
+        }
         .onReceive(handle_notify(.post)) { post in
             guard let state = self.damus_state,
                   let keypair = state.keypair.to_full() else {
