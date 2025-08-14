@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-class FavoritesManagerMock: FavoritesManagerProtocol  {
+class FavoritesManagerMock: Favorites  {
     var event: NostrEvent?
     var favorites: Set<Pubkey> = []
 

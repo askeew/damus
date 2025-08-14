@@ -280,6 +280,8 @@ struct ProfileView: View {
 
             dmButton
 
+            FavoriteButtonView(pubkey: profile.pubkey, damus_state: damus_state)
+
             if profile.pubkey != damus_state.pubkey {
                 FollowButtonView(
                     target: profile.get_follow_target(),

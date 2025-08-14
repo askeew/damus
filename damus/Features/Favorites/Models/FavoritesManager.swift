@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 /// Manages user's favorite profiles using NIP-51 lists
-class FavoritesManager: FavoritesManagerProtocol {
+class FavoritesManager: Favorites {
     static let shared = FavoritesManager()
     @Published private(set) var favorites: Set<Pubkey> = []
     var event: NostrEvent?
@@ -18,9 +18,11 @@ class FavoritesManager: FavoritesManagerProtocol {
     func toggleFavorite(_ pubkey: Pubkey) {
         if favorites.contains(pubkey) {
             favorites.remove(pubkey)
+            notify(.unfavorite(pubkey))
             Log.info("FavoritesManager: Removed %s from favorites", for: .timeline, pubkey.hex())
         } else {
             favorites.insert(pubkey)
+            notify(.favorite(pubkey))
             Log.info("FavoritesManager: Added %s to favorites", for: .timeline, pubkey.hex())
         }
     }
@@ -61,7 +63,7 @@ class FavoritesManager: FavoritesManagerProtocol {
     }
 }
 
-protocol FavoritesManagerProtocol {
+protocol Favorites {
     func isFavorite(_ pubkey: Pubkey) -> Bool
     func toggleFavorite(_ pubkey: Pubkey)
     func handleEvent(_ ev: NostrEvent, pubkey: Pubkey)
