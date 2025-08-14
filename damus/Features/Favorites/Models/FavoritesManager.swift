@@ -5,7 +5,7 @@ import SwiftUI
 class FavoritesManager: Favorites {
     static let shared = FavoritesManager()
     @Published private(set) var favorites: Set<Pubkey> = []
-    var event: NostrEvent?
+    private var event: NostrEvent?
 
     private init() {}
 
@@ -25,90 +25,6 @@ class FavoritesManager: Favorites {
             notify(.favorite(pubkey))
             Log.info("FavoritesManager: Added %s to favorites", for: .timeline, pubkey.hex())
         }
-    }
-
-    func favorite_user_event(our_favorites: NostrEvent?, keypair: FullKeypair, favorite: Pubkey) -> NostrEvent? {
-        guard let fs = our_favorites else {
-            // Create a new favorites event if we don't have one
-            return create_favorites_event(keypair: keypair, favorite: favorite)
-        }
-        guard let ev = favorite_with_existing_favorites(keypair: keypair, our_favorites: fs, favorite: favorite) else {
-            return nil
-        }
-        return ev
-    }
-
-    func unfavorite_user_event(our_favorites: NostrEvent, keypair: FullKeypair, unfavorite: Pubkey) -> NostrEvent? {
-        let tags = our_favorites.tags.reduce(into: [[String]]()) { ts, tag in
-            if let tag = FollowRef.from_tag(tag: tag), tag == FollowRef.pubkey(unfavorite) {
-                return
-            }
-            ts.append(tag.strings())
-        }
-
-        let kind = NostrKind.follow_list.rawValue
-
-        return NostrEvent(content: our_favorites.content, keypair: keypair.to_keypair(), kind: kind, tags: Array(tags))
-    }
-
-    func create_favorites_event(keypair: FullKeypair, favorite: Pubkey) -> NostrEvent? {
-        let kind = NostrKind.follow_list.rawValue
-        let tags = [
-            ["d", "favorites"],
-            ["p", favorite.hex()]
-        ]
-
-        return NostrEvent(content: "", keypair: keypair.to_keypair(), kind: kind, tags: tags)
-    }
-
-    func favorite_with_existing_favorites(keypair: FullKeypair, our_favorites: NostrEvent, favorite: Pubkey) -> NostrEvent? {
-        // don't update if we're already favoriting
-        if is_already_favoriting(favorites: our_favorites, favorite: favorite) {
-            return nil
-        }
-
-        let kind = NostrKind.follow_list.rawValue
-
-        var tags = our_favorites.tags.strings()
-        tags.append(["p", favorite.hex()])
-
-        return NostrEvent(content: our_favorites.content, keypair: keypair.to_keypair(), kind: kind, tags: tags)
-    }
-
-    func is_already_favoriting(favorites: NostrEvent, favorite: Pubkey) -> Bool {
-        return favorites.referenced_pubkeys.contains(favorite)
-    }
-
-    func favorite_reference(our_favorites: NostrEvent?, keypair: FullKeypair, favorite: Pubkey) -> NostrEvent? {
-        return favorite_user_event(our_favorites: our_favorites, keypair: keypair, favorite: favorite)
-    }
-
-    func unfavorite_reference(our_favorites: NostrEvent?, keypair: FullKeypair, unfavorite: Pubkey) -> NostrEvent? {
-        guard let fs = our_favorites else {
-            return nil
-        }
-        return unfavorite_user_event(our_favorites: fs, keypair: keypair, unfavorite: unfavorite)
-    }
-
-    func handle_favorite_action(state: DamusState, target: Pubkey, is_favorite: Bool) {
-        guard let keypair = state.keypair.to_full() else {
-            return
-        }
-
-        let ev: NostrEvent?
-        if is_favorite {
-            ev = favorite_reference(our_favorites: event, keypair: keypair, favorite: target)
-        } else {
-            ev = unfavorite_reference(our_favorites: event, keypair: keypair, unfavorite: target)
-        }
-
-        guard let ev = ev else {
-            return
-        }
-
-        state.nostrNetwork.postbox.send(ev)
-
-        self.event = ev
     }
 
     func handle_favorite(state: DamusState, target: Pubkey) {
@@ -153,6 +69,79 @@ class FavoritesManager: Favorites {
 
         Log.info("FavoritesManager: Updated favorites list from %d to %d", for: .timeline, old.count, new.count)
     }
+
+    private func favorite_user_event(our_favorites: NostrEvent?, keypair: FullKeypair, favorite: Pubkey) -> NostrEvent? {
+        guard let fs = our_favorites else {
+            // Create a new favorites event if we don't have one
+            return create_favorites_event(keypair: keypair, favorite: favorite)
+        }
+        guard let ev = favorite_with_existing_favorites(keypair: keypair, our_favorites: fs, favorite: favorite) else {
+            return nil
+        }
+        return ev
+    }
+
+    private func unfavorite_user_event(our_favorites: NostrEvent, keypair: FullKeypair, unfavorite: Pubkey) -> NostrEvent? {
+        let tags = our_favorites.tags.reduce(into: [[String]]()) { ts, tag in
+            if let tag = FollowRef.from_tag(tag: tag), tag == FollowRef.pubkey(unfavorite) {
+                return
+            }
+            ts.append(tag.strings())
+        }
+
+        let kind = NostrKind.follow_list.rawValue
+
+        return NostrEvent(content: our_favorites.content, keypair: keypair.to_keypair(), kind: kind, tags: Array(tags))
+    }
+
+    private func create_favorites_event(keypair: FullKeypair, favorite: Pubkey) -> NostrEvent? {
+        let kind = NostrKind.follow_list.rawValue
+        let tags = [
+            ["d", "favorites"],
+            ["p", favorite.hex()]
+        ]
+
+        return NostrEvent(content: "", keypair: keypair.to_keypair(), kind: kind, tags: tags)
+    }
+
+    private func favorite_with_existing_favorites(keypair: FullKeypair, our_favorites: NostrEvent, favorite: Pubkey) -> NostrEvent? {
+        // don't update if we're already favoriting
+        if our_favorites.referenced_pubkeys.contains(favorite) {
+            return nil
+        }
+        let kind = NostrKind.follow_list.rawValue
+        var tags = our_favorites.tags.strings()
+        tags.append(favorite.tag)
+        return NostrEvent(content: our_favorites.content, keypair: keypair.to_keypair(), kind: kind, tags: tags)
+    }
+
+    private func unfavorite_reference(our_favorites: NostrEvent?, keypair: FullKeypair, unfavorite: Pubkey) -> NostrEvent? {
+        guard let fs = our_favorites else {
+            return nil
+        }
+        return unfavorite_user_event(our_favorites: fs, keypair: keypair, unfavorite: unfavorite)
+    }
+
+    private func handle_favorite_action(state: DamusState, target: Pubkey, is_favorite: Bool) {
+        guard let keypair = state.keypair.to_full() else {
+            return
+        }
+
+        let ev: NostrEvent?
+        if is_favorite {
+            ev = favorite_user_event(our_favorites: event, keypair: keypair, favorite: target)
+        } else {
+            ev = unfavorite_reference(our_favorites: event, keypair: keypair, unfavorite: target)
+        }
+
+        guard let ev = ev else {
+            return
+        }
+        print(ev.debugDescription)
+        state.nostrNetwork.postbox.send(ev)
+
+        self.event = ev
+    }
 }
 
 protocol Favorites {
@@ -161,5 +150,4 @@ protocol Favorites {
     func handleEvent(_ ev: NostrEvent, pubkey: Pubkey)
     func handle_favorite(state: DamusState, target: Pubkey)
     func handle_unfavorite(state: DamusState, target: Pubkey)
-    var event: NostrEvent? { get set }
 }
